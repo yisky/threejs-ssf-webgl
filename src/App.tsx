@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-	ACESFilmicToneMapping,
 	Clock,
 	Color,
 	DirectionalLight,
+	HalfFloatType,
 	HemisphereLight,
 	MathUtils,
 	Mesh,
@@ -19,7 +19,7 @@ import {
 } from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
-import { EffectComposer, EffectPass, RenderPass } from 'postprocessing'
+import { EffectComposer, EffectPass, RenderPass, ToneMappingEffect, ToneMappingMode } from 'postprocessing'
 import { SSFEffect } from './ssf/SSFEffect'
 
 /**
@@ -289,8 +289,6 @@ export default function App() {
 
 		const renderer = new WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' })
 		renderer.outputColorSpace = SRGBColorSpace
-		renderer.toneMapping = ACESFilmicToneMapping
-		renderer.toneMappingExposure = 1
 		renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
 		const scene = new Scene()
@@ -303,9 +301,13 @@ export default function App() {
 		scene.add(new HemisphereLight('#e7eef2', '#3e4a32', 0.55))
 
 		const effect = new SSFEffect()
-		const composer = new EffectComposer(renderer, { multisampling: 0 })
+		// 半精度缓冲才能记下大于 1 的颜色。8 位缓冲会先把高光截成 1，后面的色调映射只能把整张图压暗。
+		// renderer.toneMapping 只在直接画到画布时生效，离屏缓冲和 EffectPass 都不会用它，所以色调映射放在后处理里。
+		// 雾先在线性空间混合，再做 ACES。本包运行时默认是 AGX，类型声明却写着 ACES，这里显式指定。
+		const composer = new EffectComposer(renderer, { multisampling: 0, frameBufferType: HalfFloatType })
+		const toneMapping = new ToneMappingEffect({ mode: ToneMappingMode.ACES_FILMIC })
 		composer.addPass(new RenderPass(scene, camera))
-		composer.addPass(new EffectPass(camera, effect))
+		composer.addPass(new EffectPass(camera, effect, toneMapping))
 		// EffectPass 不会在构造时把相机交给效果。矩阵是按引用保存的，这里设一次即可。
 		composer.setMainCamera(camera)
 
