@@ -304,8 +304,10 @@ export default function App() {
 		// 半精度缓冲才能记下大于 1 的颜色。8 位缓冲会先把高光截成 1，后面的色调映射只能把整张图压暗。
 		// renderer.toneMapping 只在直接画到画布时生效，离屏缓冲和 EffectPass 都不会用它，所以色调映射放在后处理里。
 		// 雾先在线性空间混合，再做 ACES。本包运行时默认是 AGX，类型声明却写着 ACES，这里显式指定。
+		// 散射颜色不超过 1，ACES 会把它和雾色压到一起。强度 4 只在开着色调映射时使用；关掉色调映射要改回 1，否则光晕被截成白块。
 		const composer = new EffectComposer(renderer, { multisampling: 0, frameBufferType: HalfFloatType })
 		const toneMapping = new ToneMappingEffect({ mode: ToneMappingMode.ACES_FILMIC })
+		effect.inscatteringIntensity = 4
 		composer.addPass(new RenderPass(scene, camera))
 		composer.addPass(new EffectPass(camera, effect, toneMapping))
 		// EffectPass 不会在构造时把相机交给效果。矩阵是按引用保存的，这里设一次即可。

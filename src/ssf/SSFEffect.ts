@@ -33,6 +33,8 @@ export interface SSFEffectParams {
 	directionalInscatteringColor?: ColorRepresentation;
 	directionalInscatteringExponent?: number;
 	directionalInscatteringStartDistance?: number;
+	/** 散射亮度。默认 1。配合 ACES 时调高，不着色调映射时保持 1。 */
+	inscatteringIntensity?: number;
 
 }
 
@@ -66,6 +68,7 @@ export class SSFEffect extends Effect {
 		directionalInscatteringColor = '#fff3da',
 		directionalInscatteringExponent = 8.0,
 		directionalInscatteringStartDistance = 0.0,
+		inscatteringIntensity = 1.0,
 	}: SSFEffectParams = {}) {
 
 		super('SSFEffect', fragmentShader, {
@@ -90,6 +93,7 @@ export class SSFEffect extends Effect {
 				[ 'uDirectionalInscatteringColor', new Uniform(new Color(directionalInscatteringColor)) ],
 				[ 'uDirectionalInscatteringExponent', new Uniform(directionalInscatteringExponent) ],
 				[ 'uDirectionalInscatteringStartDistance', new Uniform(directionalInscatteringStartDistance) ],
+				[ 'uInscatteringIntensity', new Uniform(inscatteringIntensity) ],
 				[ 'uCameraPosition', new Uniform(new Vector3()) ],
 				[ 'uCameraWorldMatrix', new Uniform(new Matrix4()) ],
 				[ 'uCameraProjectionMatrix', new Uniform(new Matrix4()) ],
@@ -194,6 +198,13 @@ export class SSFEffect extends Effect {
 	set directionalInscatteringStartDistance(value: number) {
 
 		this.uniforms.get('uDirectionalInscatteringStartDistance')!.value = value;
+
+	}
+
+	/** 散射亮度。不着色调映射时用 1；ACES 会压高光，需要调高才能看见光晕。 */
+	set inscatteringIntensity(value: number) {
+
+		this.uniforms.get('uInscatteringIntensity')!.value = value;
 
 	}
 

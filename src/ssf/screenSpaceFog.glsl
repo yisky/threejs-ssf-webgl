@@ -1,7 +1,8 @@
 // 屏幕空间高度雾。
 // 密度 ρ(y) = fogDensity * exp2(-fogHeightFalloff * (y - fogHeight))，低处浓、高处淡。
 // 噪声加在雾面高度上，不乘密度。透射率 T = exp2(-光学深度)，并且不低于 1 - fogMaxOpacity。
-// 输出 = 雾色 * (1 - T) + 方向散射 + 场景色 * T。
+// 输出 = 雾色 * (1 - T) + 方向散射 * 强度 + 场景色 * T。
+// 强度默认 1。开了 ACES 时由调用方调高，用来抵消肩部压缩；不着色调映射时保持 1，避免光晕被截成白块。
 // getViewZ、readDepth、saturate、cameraNear/Far 来自 EffectPass 的前导代码，这里不要再定义。
 
 const float FLT_EPSILON = 0.001;
@@ -27,6 +28,7 @@ uniform vec3 uInscatteringLightDirection;
 uniform vec3 uDirectionalInscatteringColor;
 uniform float uDirectionalInscatteringExponent;
 uniform float uDirectionalInscatteringStartDistance;
+uniform float uInscatteringIntensity;
 
 uniform vec3 uCameraPosition;
 uniform mat4 uCameraWorldMatrix;
@@ -118,7 +120,7 @@ vec3 applyFog(const in vec3 col, const in vec3 worldPosition) {
 	float dirExponentialHeightLineIntegral = getOpticalDepth(dirStartY, worldPosition.y, cameraToReceiverLength - dirExcludedLength, noisyFogHeight);
 
 	// 朝向光源时 -viewDir 与光的传播方向同向，pow 后的散射最强。
-	vec3 directionalLightInscattering = uDirectionalInscatteringColor * pow(saturate(dot(-cameraToReceiverNormalized, uInscatteringLightDirection)), uDirectionalInscatteringExponent);
+	vec3 directionalLightInscattering = uDirectionalInscatteringColor * uInscatteringIntensity * pow(saturate(dot(-cameraToReceiverNormalized, uInscatteringLightDirection)), uDirectionalInscatteringExponent);
 	float directionalInscatteringFogFactor = saturate(exp2(-dirExponentialHeightLineIntegral));
 	vec3 directionalInscattering = directionalLightInscattering * (1.0 - directionalInscatteringFogFactor);
 
